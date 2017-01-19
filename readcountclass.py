@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import pandas as pd
+import natsort
 
 class ReadCountTable(pd.DataFrame):
     
@@ -64,6 +65,10 @@ class ReadCountTable(pd.DataFrame):
         2) a table containing information on the columns and how they're grouped.
         Files are written to the given directory. '''
         
+        # put gene name column first! DESeq2 analysis cares about order of columns
+        resorted_cols = [self.__gene_column_name]+natsort.natsorted(list(self.columns[:-1]), key=lambda x:x.split('/')[-1])
+        self = self[resorted_cols]
+        
         # write count table
         with open('{}/{}'.format(directory, rct_file_name), 'w') as f:
             f.write('# Read counts\n')
@@ -120,5 +125,4 @@ if __name__ == '__main__':
     total_rct = concat_read_count_tables(rct_list)
     total_rct.remove_sample('H1_EXP0_1')
     
-    # write DESeq colData file
     total_rct.write_DESeq2_files(outdir)
