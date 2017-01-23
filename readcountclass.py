@@ -122,12 +122,13 @@ def concat_read_count_tables(listoftables):
     it's samples are each assigned a value of 0 for that gene. '''
     
     # concat all rcts
-    total_rct = listoftables[0].set_index('genename')
+    # always set column containing gene names as index
+    total_rct = listoftables[0].set_index(listoftables[0].__gene_column_name)
     for i in range(len(listoftables)-1):
-        rct_to_add = listoftables[i+1].set_index('genename')
+        rct_to_add = listoftables[i+1].set_index(listoftables[i+1].__gene_column_name)
         total_rct = pd.concat([total_rct, rct_to_add], axis=1)
         
-    # replace missing values with 0     
+    # replace missing values with 0
     total_rct = total_rct.fillna(0)
     
     # set genename as a column instead of index
