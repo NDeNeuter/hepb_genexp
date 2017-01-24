@@ -8,11 +8,11 @@ print('Starting R script')
 register(SnowParam(7))
 
 # reading in count data
-datafilepath <- "/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/readcounts/read_count_table.txt"
+datafilepath <- "read_count_table.txt"
 data <- read.table(datafilepath, header = TRUE, sep = "\t", row.names=1)
 
 # reading in colData
-coldatafilepath <- "/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/readcounts/col_data.txt"
+coldatafilepath <- "col_data.txt"
 colData <- read.table(coldatafilepath, header = TRUE, sep = "\t")
 colData$Ind <- as.factor(colData$Ind)
 colData$Day <- as.factor(colData$Day)
@@ -45,23 +45,32 @@ pdf(file = paste(getwd(),'/heatmap.pdf', sep = ''))
 pheatmap(sampleDistMatrix, clustering_distance_rows=sampleDists, clustering_distance_cols=sampleDists)
 dev.off() 
   
-# print('Fitting DEseq model')
-# 
-# # fit model with DESeq
-# dds <- DESeq(dds, test="LRT", reduced = ~ Day + Run, parallel = TRUE) 
-# 
-# # get results for change between days
-# res <- results(dds, contrast = c("Day","0","3"))
-# 
-# # sort genes according to their significance and show most significant
-# res <- res[order(res$padj),]
-# head(res)
-# 
-# # plot MA plot
-# plotMA(res, alpha=0.01, ylim=c(-10,10))
-# 
-# # plot volcano plot
-# volcanoData <- cbind(res$log2FoldChange, -log10(res$padj))
-# volcanoData <- na.omit(volcanoData)
-# colnames(volcanoData) <- c("logFC", "negLogPval")
-# plot(volcanoData)
+print('Fitting DEseq model')
+
+# fit model with DESeq
+dds <- DESeq(dds, test="LRT", reduced = ~ Day + Run, parallel = TRUE)
+
+for (x in list(c(0, 3), c(0, 7), c(3, 7))){
+  
+  # get results for change between days
+  res <- results(dds, contrast = c("Day", x[1], x[2]))
+  
+  # sort genes according to their significance and show most significant
+  res <- res[order(res$padj),]
+  write.csv(as.data.frame(res), file = paste(getwd(),'/results_',x[1],'_',x[2],'.txt', sep = ''))
+  head(res)
+  
+  # plot MA plot
+  pdf(file = paste(getwd(),'/MAplot_',x[1],'_',x[2],'.pdf', sep = ''))
+  plotMA(res, alpha=0.01, ylim=c(-10,10))
+  dev.off()
+  
+  # plot volcano plot
+  volcanoData <- cbind(res$log2FoldChange, -log10(res$padj))
+  volcanoData <- na.omit(volcanoData)
+  colnames(volcanoData) <- c("logFC", "negLogPval")
+  pdf(file = paste(getwd(),'/volcanoplot_',x[1],'_',x[2],'.pdf', sep = ''))
+  plot(volcanoData)
+  dev.off()
+  
+}
