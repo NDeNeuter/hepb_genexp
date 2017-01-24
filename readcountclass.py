@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
-import pandas as pd
+import os
+import sys
 import natsort
+import pandas as pd
+from glob import glob
 from numpy import mean
 
 
@@ -20,12 +23,12 @@ def concat_read_count_tables(listoftables):
         total_rct = pd.concat([total_rct, rct_to_add], axis=1)
     
     # replace missing values with 0
-    total_rct = total_rct.fillna(0)
+    total_rct = ReadCountTable(total_rct.fillna(0))
     
     # set genename as a column instead of index
     total_rct[total_rct.gene_column_name] = total_rct.index
 
-    return ReadCountTable(total_rct)
+    return total_rct
 
 
 def process_nonresp_0(columnname):
@@ -137,14 +140,17 @@ class ReadCountTable(pd.DataFrame):
                 
         # put gene name column first! DESeq2 analysis cares about order of columns
         resorted_cols = [self.gene_column_name]+natsort.natsorted(list([x for x in self.columns if x != self.gene_column_name]), key=lambda x:x.split('/')[-1])
-        self = self[resorted_cols]
+        
+        self = ReadCountTable(self[resorted_cols])
         
         # write count table
+        print('Read count table: {}/{}'.format(directory, rct_file_name))
         with open('{}/{}'.format(directory, rct_file_name), 'w') as f:
             f.write('# Read counts\n')
             self.to_csv(f, sep='\t', index=False)
         
         # write column data table
+        print('Column data table: {}/{}'.format(directory, coldata_file_name))
         with open('{}/{}'.format(directory, coldata_file_name), 'w') as f:
             
             if processor == process_nonresp_0:
@@ -158,22 +164,23 @@ class ReadCountTable(pd.DataFrame):
 
 if __name__ == '__main__':
     
-    import os
-    import sys
-    from glob import glob
-    
     mode = sys.argv[1]
     
     if mode == '-R':
-    
+        
+        print('Running R based pipeline')
+        
         # read and write data to working directory
-        # curdir = os.getcwd()
-        curdir = "/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/readcounts"
+        curdir = os.getcwd()
+        print('Looking for files in {}'.format(curdir))
+        #curdir = "/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/readcounts"
         
         # read each count table in curdir and save it as count table instance
         rct_list = []
+        print('Files found:')
         for filepath in glob(curdir+'/*'):
             if 'readcount' in filepath.split('/')[-1]:
+                print(filepath)
                 rct = ReadCountTable(pd.read_csv(filepath, sep = '\t'))
                 # combine counts for same sample over different lanes
                 rct.combine_lane_counts()
@@ -183,26 +190,33 @@ if __name__ == '__main__':
             raise IOError('No read count files were found.')
         
         # combine all count tables
+        print('Combining read count tables together')
         total_rct = concat_read_count_tables(rct_list)
         
+        print('Removing samples with unknown responder status')
         response_dict = make_responders_dict()
         # remove samples for which responder status is unknown
         for sample in total_rct.columns:
             if sample.split('/')[-1].split('_')[0] not in response_dict.keys() and sample != total_rct.gene_column_name:
                 del total_rct[sample]
                         
+        print('Removing H1_EXP0_1 from data (outlier on PCA)')
         # remove outlier sample 
         total_rct.remove_sample('H1_EXP0_1')
         
+        print('Combining data on H6_EXP3_1 (sequenced twice with bad quality)')
         # H6_EXP3_1 was sequenced twice due to bad quality, take mean of the two runs since they're both of lower quality
         total_rct['/home/shared_data_immuno/Run_Data/161125+170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1'] = \
             total_rct[['/home/shared_data_immuno/Run_Data/170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1_S29',\
-                        '/home/shared_data_immuno/Run_Data/161125_NB501809_0023_AHLC7CBGXY/tmp_files/H6_EXP3_1_S15']].sum(axis =1)
+                        '/home/shared_data_immuno/Run_Data/161125_NB501809_0023_AHLC7CBGXY/tmp_files/H6_EXP3_1_S15']].sum(axis =1).map(lambda x: int(x/2))
         del total_rct['/home/shared_data_immuno/Run_Data/170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1_S29']
         del total_rct['/home/shared_data_immuno/Run_Data/161125_NB501809_0023_AHLC7CBGXY/tmp_files/H6_EXP3_1_S15']
         
         # write data to files
+        print('Data preprocessing finished.\nWriting output to: {}'.format(curdir))
         total_rct.write_DESeq2_files(curdir)
+        
+        print('Finished Python script')
         
     elif mode == '-ML':
         
