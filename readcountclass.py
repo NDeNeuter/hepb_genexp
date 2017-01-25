@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
-import os
-import sys
 import natsort
 import subprocess
 import pandas as pd
-from glob import glob
 from numpy import mean
 
 
@@ -32,7 +29,7 @@ def concat_read_count_tables(listoftables):
     return total_rct
 
 
-def process_sample(columnname, pipeline = 'ML'):
+def process_sample(columnname, response_dict, pipeline = 'ML'):
     
     ''' Processes a sample's name into the different factors associated with the sample.
     To be used during the writing of coldata (ie: factor table) with the
@@ -124,7 +121,7 @@ class ReadCountTable(pd.DataFrame):
                 del self[col]
         
         
-    def write_DESeq2_files(self, directory, rct_file_name = 'read_count_table.txt', coldata_file_name = 'col_data.txt', pipeline = 'ML'):
+    def write_DESeq2_files(self, directory, response_dict, rct_file_name = 'read_count_table.txt', coldata_file_name = 'col_data.txt', pipeline = 'ML'):
         
         ''' Writes out necessary files to perform a DESeq2 analysis on the read count table.
         Two files are generated:
@@ -156,113 +153,5 @@ class ReadCountTable(pd.DataFrame):
             f.write('Ind\tDay\tRepeat\tRun\tResp\n')
             for columnname in self.columns:
                 if columnname != self.gene_column_name:
-                    ind, day, rep, run, resp = process_sample(columnname, pipeline)
+                    ind, day, rep, run, resp = process_sample(columnname, response_dict, pipeline)
                     f.write('{}\t{}\t{}\t{}\t{}\n'.format(ind, day, rep, run, resp))
-        
-
-
-if __name__ == '__main__':
-    
-    pipeline = sys.argv[1]
-        
-    if pipeline == '-R':
-        print('Running R based pipeline')
-    
-    elif pipeline == '-ML':
-        print('Running ML based pipeline')
-    else:
-        raise IOError('Expects either -R or -ML to determine which pipeline to run.')
-    
-    # read data from working directory
-    maindir = os.getcwd()
-    print('Looking for files in {}'.format(maindir))
-    #maindir = "/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/readcounts"
-    
-    # read each count table in maindir and save it as count table instance
-    rct_list = []
-    print('Files found:')
-    for filepath in glob(maindir+'/*'):
-        if 'readcount' in filepath.split('/')[-1]:
-            print(filepath)
-            rct = ReadCountTable(pd.read_csv(filepath, sep = '\t'))
-            # combine counts for same sample over different lanes
-            rct.combine_lane_counts()
-            rct_list.append(rct)
-    
-    if len(rct_list) == 0:
-        raise IOError('No read count files were found.')
-    
-    # combine all count tables
-    print('Combining read count tables together')
-    total_rct = concat_read_count_tables(rct_list)
-    
-    print('Removing samples with unknown responder status')
-    response_dict = make_responders_dict()
-    # remove samples for which responder status is unknown
-    for sample in total_rct.columns:
-        if sample.split('/')[-1].split('_')[0] not in response_dict.keys() and sample != total_rct.gene_column_name:
-            del total_rct[sample]
-                    
-    print('Removing H1_EXP0_1 from data (outlier on PCA)')
-    # remove outlier sample 
-    total_rct.remove_sample('H1_EXP0_1')
-    
-    print('Combining data on H6_EXP3_1 (sequenced twice with bad quality)')
-    # H6_EXP3_1 was sequenced twice due to bad quality, take mean of the two runs since they're both of lower quality
-    total_rct['/home/shared_data_immuno/Run_Data/161125+170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1'] = \
-        total_rct[['/home/shared_data_immuno/Run_Data/170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1_S29',\
-                    '/home/shared_data_immuno/Run_Data/161125_NB501809_0023_AHLC7CBGXY/tmp_files/H6_EXP3_1_S15']].sum(axis =1).map(lambda x: int(x/2))
-    del total_rct['/home/shared_data_immuno/Run_Data/170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1_S29']
-    del total_rct['/home/shared_data_immuno/Run_Data/161125_NB501809_0023_AHLC7CBGXY/tmp_files/H6_EXP3_1_S15']
-    
-    if pipeline == '-R':
-        
-        # write data to files in a subdir
-        out = '{}/R_results'.format(maindir)
-        print('Data preprocessing finished.\nWriting output to: {}'.format(out))
-        if os.path.isdir(out) != True:
-            os.mkdir(out)
-        total_rct.write_DESeq2_files(out, pipeline = pipeline)
-        
-        # perform R analysis)
-        
-        os.chdir(out)
-        bashcommand = 'Rscript {}/deseq2_R_analysis.R'.format(maindir)
-        process = subprocess.run(bashcommand.split())
-        #os.remove('Rplots.pdf')
-        
-    if pipeline == '-ML':
-        
-        # create dict mapping volunteer ids to their samples
-        volunteer_map = {}
-        for columnname in total_rct.columns:
-            if columnname != total_rct.gene_column_name:
-                volunteer_id = columnname.split('/')[-1].split('_')[0]
-                volunteer_map.setdefault(volunteer_id, []).append(columnname)
-                
-        # make directory to place all output in
-        out = '{}/ML_approach_samples'.format(maindir)
-        if os.path.isdir(out) != True:
-            os.mkdir(out)
-        os.chdir(out)
-        
-        # write away each volunteer's data to a separate subdir
-        for volunteer_id, samples in volunteer_map.items():
-            subout = '{}/ML_approach_samples/{}'.format(maindir, volunteer_id)
-            if os.path.isdir(sub) != True:
-                os.mkdir(subout)
-            vol_rct = ReadCountTable(total_rct[[total_rct.gene_column_name]+samples])
-            vol_rct.write_DESeq2_files(subout, \
-                                       rct_file_name = '{}_rct'.format(volunteer_id), \
-                                       coldata_file_name = '{}_coldata'.format(volunteer_id), \
-                                       pipeline = pipeline)
-            
-            # perform R analysis on this part of the data
-            os.chdir(subout)
-            bashcommand = 'Rscript {}/deseq2_ML_analysis.R'.format(maindir)
-            process = subprocess.run(bashcommand.split())
-            os.remove('Rplot.pdf')
-            os.chdir(out)
-            
-    print('Finished Python script')
-    
