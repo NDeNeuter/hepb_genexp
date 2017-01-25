@@ -1,9 +1,6 @@
 # loading necessary packages
-library(BiocParallel)
 library(DESeq2)
 library("pheatmap")
-
-print('Starting R script')
 
 # reading in count data
 datafilepath <- "read_count_table.txt"
@@ -41,9 +38,7 @@ sampleDistMatrix <- as.matrix( sampleDists )
 rownames(sampleDistMatrix) <- paste( rld$Day, sep="-" )
 pdf(file = paste(getwd(),'/heatmap.pdf', sep = ''))
 pheatmap(sampleDistMatrix, clustering_distance_rows=sampleDists, clustering_distance_cols=sampleDists)
-dev.off() 
-  
-print('Fitting DEseq model')
+dev.off()
 
 # fit model with DESeq
 dds <- DESeq(dds, test="LRT", reduced = ~ Run)

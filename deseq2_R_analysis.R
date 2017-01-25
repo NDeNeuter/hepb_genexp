@@ -3,8 +3,6 @@ library(BiocParallel)
 library(DESeq2)
 library("pheatmap")
 
-print('Starting R script')
-
 register(SnowParam(7))
 
 # reading in count data
@@ -44,8 +42,6 @@ rownames(sampleDistMatrix) <- paste( rld$Day, sep="-" )
 pdf(file = paste(getwd(),'/heatmap.pdf', sep = ''))
 pheatmap(sampleDistMatrix, clustering_distance_rows=sampleDists, clustering_distance_cols=sampleDists)
 dev.off() 
-  
-print('Fitting DEseq model')
 
 # fit model with DESeq
 dds <- DESeq(dds, test="LRT", reduced = ~ Day + Run, parallel = TRUE)
