@@ -3,6 +3,7 @@
 import os
 import sys
 import natsort
+import subprocess
 import pandas as pd
 from glob import glob
 from numpy import mean
@@ -69,7 +70,7 @@ def make_responders_dict(datafile = "/Users/nicolasdeneuter/Dropbox/GOA/HepB run
 
 
 class ReadCountTable(pd.DataFrame):
-    
+
     def __init__(self, df, gene_column_name = 'genename'):
         
         super().__init__(df)
@@ -164,17 +165,23 @@ if __name__ == '__main__':
     
     pipeline = sys.argv[1]
         
-    print('Running R based pipeline')
+    if pipeline == '-R':
+        print('Running R based pipeline')
     
-    # read and write data to working directory
-    curdir = os.getcwd()
-    print('Looking for files in {}'.format(curdir))
-    #curdir = "/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/readcounts"
+    elif pipeline == '-ML':
+        print('Running ML based pipeline')
+    else:
+        raise IOError('Expects either -R or -ML to determine which pipeline to run.')
     
-    # read each count table in curdir and save it as count table instance
+    # read data from working directory
+    maindir = os.getcwd()
+    print('Looking for files in {}'.format(maindir))
+    #maindir = "/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/readcounts"
+    
+    # read each count table in maindir and save it as count table instance
     rct_list = []
     print('Files found:')
-    for filepath in glob(curdir+'/*'):
+    for filepath in glob(maindir+'/*'):
         if 'readcount' in filepath.split('/')[-1]:
             print(filepath)
             rct = ReadCountTable(pd.read_csv(filepath, sep = '\t'))
@@ -208,13 +215,23 @@ if __name__ == '__main__':
     del total_rct['/home/shared_data_immuno/Run_Data/170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1_S29']
     del total_rct['/home/shared_data_immuno/Run_Data/161125_NB501809_0023_AHLC7CBGXY/tmp_files/H6_EXP3_1_S15']
     
-    if pipeline == 'R':
+    if pipeline == '-R':
         
-        # write data to files
-        print('Data preprocessing finished.\nWriting output to: {}'.format(curdir))
-        total_rct.write_DESeq2_files(curdir, pipeline = pipeline)
+        # write data to files in a subdir
+        out = '{}/R_results'.format(maindir)
+        print('Data preprocessing finished.\nWriting output to: {}'.format(out))
+        if os.path.isdir(out) != True:
+            os.mkdir(out)
+        total_rct.write_DESeq2_files(out, pipeline = pipeline)
         
-    if pipeline == 'ML':
+        # perform R analysis)
+        
+        os.chdir(out)
+        bashcommand = 'Rscript {}/deseq2_R_analysis.R'.format(maindir)
+        process = subprocess.run(bashcommand.split())
+        #os.remove('Rplots.pdf')
+        
+    if pipeline == '-ML':
         
         # create dict mapping volunteer ids to their samples
         volunteer_map = {}
@@ -223,18 +240,29 @@ if __name__ == '__main__':
                 volunteer_id = columnname.split('/')[-1].split('_')[0]
                 volunteer_map.setdefault(volunteer_id, []).append(columnname)
                 
-        # make subdirectory to place all output in
-        out = '{}/ML_sample_count_tables'.format(curdir)
+        # make directory to place all output in
+        out = '{}/ML_approach_samples'.format(maindir)
         if os.path.isdir(out) != True:
             os.mkdir(out)
-            
-        # write away data to subdir
+        os.chdir(out)
+        
+        # write away each volunteer's data to a separate subdir
         for volunteer_id, samples in volunteer_map.items():
+            subout = '{}/ML_approach_samples/{}'.format(maindir, volunteer_id)
+            if os.path.isdir(sub) != True:
+                os.mkdir(subout)
             vol_rct = ReadCountTable(total_rct[[total_rct.gene_column_name]+samples])
-            vol_rct.write_DESeq2_files(outdir, \
+            vol_rct.write_DESeq2_files(subout, \
                                        rct_file_name = '{}_rct'.format(volunteer_id), \
                                        coldata_file_name = '{}_coldata'.format(volunteer_id), \
                                        pipeline = pipeline)
-    
+            
+            # perform R analysis on this part of the data
+            os.chdir(subout)
+            bashcommand = 'Rscript {}/deseq2_ML_analysis.R'.format(maindir)
+            process = subprocess.run(bashcommand.split())
+            os.remove('Rplot.pdf')
+            os.chdir(out)
+            
     print('Finished Python script')
     
