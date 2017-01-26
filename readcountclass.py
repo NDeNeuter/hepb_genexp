@@ -5,67 +5,6 @@ import subprocess
 import pandas as pd
 from numpy import mean
 
-
-def concat_read_count_tables(listoftables):
-    
-    ''' Given multiple read count table instances, combine them into a single instance.
-    List of genes in the final table contains all the genes present in different read count tables.
-    If a read count table didn't have any data on a gene present in another table,
-    it's samples are each assigned a value of 0 for that gene. '''
-    
-    # concat all rcts
-    # always set column containing gene names as index
-    total_rct = listoftables[0].set_index(listoftables[0].gene_column_name)
-    for i in range(len(listoftables)-1):
-        rct_to_add = listoftables[i+1].set_index(listoftables[i+1].gene_column_name)
-        total_rct = pd.concat([total_rct, rct_to_add], axis=1)
-    
-    # replace missing values with 0
-    total_rct = ReadCountTable(total_rct.fillna(0))
-    
-    # set genename as a column instead of index
-    total_rct[total_rct.gene_column_name] = total_rct.index
-
-    return total_rct
-
-
-def process_sample(columnname, response_dict, pipeline = 'ML'):
-    
-    ''' Processes a sample's name into the different factors associated with the sample.
-    To be used during the writing of coldata (ie: factor table) with the
-    write_DESeq2_files method of the ReadCountTable class. '''
-     
-    ind = columnname.split('/')[-1].split('_')[0]
-    resp = response_dict[ind]
-    day = columnname.split('/')[-1].split('_')[1].replace('EXP', '')
-    if pipeline == 'R' and resp == 'Non-resp':
-        day = 0
-    rep = columnname.split('/')[-1].split('_')[2]
-    run = columnname.split('/')[-3].split('_')[0]
-    
-    return ind, day, rep, run, resp
-
-
-def make_responders_dict(datafile = "/Users/nicolasdeneuter/Dropbox/GOA/HepB run/Hep B run incl test _ Samples overview.xlsx"):
-    
-    ''' Process data on volunteers to determine if they're responders or not.
-    Return a dict with volunteers as keys and their response as key. '''
-    
-    # read in data
-    all_data = pd.read_excel(datafile, skiprows = [2, 3, 4, 5], header = [0, 1], sheetname = 'ELISA', index_col = 0)
-    # select subset of data on elisa results for day 60
-    elisa_data = all_data['Anti-HBS (IU/L)'][['ELISA_60 (Batch)', 'ELISA_60 (Repeat)']]
-    # drop patients with missing values
-    elisa_data = elisa_data.dropna()
-    # change everything to numbers (< 2 => 0 and > 1000 => 1000)
-    elisa_data = elisa_data.applymap(lambda x: x if x != '< 2' else 0)
-    elisa_data = elisa_data.applymap(lambda x: x if x != '>1000' else 1000)
-    # set each patient to responder (True) or non-responder (False) and turn series to dict after calculating mean response
-    elisa_data = dict(elisa_data.apply(mean, axis = 1).map(lambda x: 'Non-resp' if x <= 10 else 'Resp'))
-    
-    return elisa_data
-
-
 class ReadCountTable(pd.DataFrame):
 
     def __init__(self, df, gene_column_name = 'genename'):
@@ -153,5 +92,96 @@ class ReadCountTable(pd.DataFrame):
             f.write('Ind\tDay\tRepeat\tRun\tResp\n')
             for columnname in self.columns:
                 if columnname != self.gene_column_name:
-                    ind, day, rep, run, resp = process_sample(columnname, response_dict, pipeline)
+                    ind, day, rep, run, resp = process_samplename(columnname, response_dict, pipeline)
                     f.write('{}\t{}\t{}\t{}\t{}\n'.format(ind, day, rep, run, resp))
+
+
+class DiffGeneTable(pd.DataFrame):
+
+    def __init__(self, df):
+        
+        super().__init__(df)
+        for columnname in self.columns:
+            if 'Unnamed' in columnname:
+                del self[columnname]
+                
+    def diff_genes(self, p_adj_threshold = 0.05):
+        
+        ''' Returns a list of differentially expressed genes with an adjsted p-value under a given threshold. '''
+        
+        return list(self.sort_values(by='padj')[self['padj'] <= p_adj_threshold].index)
+        
+    
+    def fraction_diff_genes(self, p_adj_threshold = 0.05):
+        
+        ''' Returns % of genes that are differentially expressed among all genes in the table. '''
+        
+        all_genes = len(self.index)
+        diff_genes = len(self[self['padj'] <= p_adj_threshold].index)
+        
+        return diff_genes/all_genes
+    
+        
+def concat_read_count_tables(listoftables):
+    
+    ''' Given multiple read count table instances, combine them into a single instance.
+    List of genes in the final table contains all the genes present in different read count tables.
+    If a read count table didn't have any data on a gene present in another table,
+    it's samples are each assigned a value of 0 for that gene. '''
+    
+    # concat all rcts
+    # always set column containing gene names as index
+    total_rct = listoftables[0].set_index(listoftables[0].gene_column_name)
+    for i in range(len(listoftables)-1):
+        rct_to_add = listoftables[i+1].set_index(listoftables[i+1].gene_column_name)
+        total_rct = pd.concat([total_rct, rct_to_add], axis=1)
+    
+    # replace missing values with 0
+    total_rct = ReadCountTable(total_rct.fillna(0))
+    
+    # set genename as a column instead of index
+    total_rct[total_rct.gene_column_name] = total_rct.index
+
+    return total_rct
+
+
+def process_samplename(columnname, response_dict, pipeline = 'ML'):
+    
+    ''' Processes a sample's name into the different factors associated with the sample.
+    To be used during the writing of coldata (ie: factor table) with the
+    write_DESeq2_files method of the ReadCountTable class. '''
+     
+    ind = columnname.split('/')[-1].split('_')[0]
+    resp = response_dict[ind]
+    day = columnname.split('/')[-1].split('_')[1].replace('EXP', '')
+    if pipeline == '-R' and resp == 'Non-resp':
+        day = 0
+    rep = columnname.split('/')[-1].split('_')[2]
+    run = columnname.split('/')[-3].split('_')[0]
+    
+    return ind, day, rep, run, resp
+
+
+def make_responders_dict(datafile = "/Users/nicolasdeneuter/Dropbox/GOA/HepB run/Hep B run incl test _ Samples overview.xlsx"):
+    
+    ''' Process data on volunteers to determine if they're responders or not.
+    Return a dict with volunteers as keys and their response as key. '''
+    
+    # read in data
+    all_data = pd.read_excel(datafile, skiprows = [2, 3, 4, 5], header = [0, 1], sheetname = 'ELISA', index_col = 0)
+    # select subset of data on elisa results for day 60
+    elisa_data = all_data['Anti-HBS (IU/L)'][['ELISA_60 (Batch)', 'ELISA_60 (Repeat)']]
+    # drop patients with missing values
+    elisa_data = elisa_data.dropna()
+    # change everything to numbers (< 2 => 0 and > 1000 => 1000)
+    elisa_data = elisa_data.applymap(lambda x: x if x != '< 2' else 0)
+    elisa_data = elisa_data.applymap(lambda x: x if x != '>1000' else 1000)
+    # set each patient to responder (True) or non-responder (False) and turn series to dict after calculating mean response
+    elisa_data = dict(elisa_data.apply(mean, axis = 1).map(lambda x: 'Non-resp' if x <= 10 else 'Resp'))
+    
+    return elisa_data
+
+
+if __name__ == '__main__':
+    
+    print(make_responders_dict())
