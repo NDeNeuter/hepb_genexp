@@ -55,13 +55,13 @@ for (x in list(c(0, 3), c(0, 7), c(3, 7))){
   
   # plot MA plot
   pdf(file = paste(getwd(),'/MAplot_',x[1],'_',x[2],'.pdf', sep = ''))
-  plotMA(res, alpha=0.01, ylim=c(-10,10))
+  plotMA(res, alpha=0.05, ylim=c(-10,10))
   dev.off()
   
   # plot volcano plot
   volcanoData <- cbind(res$log2FoldChange, -log10(res$padj))
   volcanoData <- na.omit(volcanoData)
-  colnames(volcanoData) <- c("logFC", "negLogPval")
+  colnames(volcanoData) <- c("10logFC", "negLogPval")
   pdf(file = paste(getwd(),'/volcanoplot_',x[1],'_',x[2],'.pdf', sep = ''))
   plot(volcanoData)
   dev.off()
