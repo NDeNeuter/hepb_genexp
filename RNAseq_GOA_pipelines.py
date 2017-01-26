@@ -7,16 +7,16 @@ import pandas as pd
 import readcountclass
 from glob import glob
 
+# read pipeline argument
 pipeline = sys.argv[1]
     
+# determine pipeline to be used based on argument
 if pipeline == '-R':
     print('Running R based pipeline')
-
 elif pipeline == '-ML':
     print('Running ML based pipeline')
 else:
-    raise IOError('Expects either -R or -ML to determine which pipeline to run.')
-
+    raise ValueError('Expects either -R or -ML as argument to determine which pipeline to run.')
 
 # read data from working directory
 maindir = os.getcwd()
@@ -54,12 +54,11 @@ total_rct.remove_sample('H1_EXP0_1')
 
 print('Combining data on H6_EXP3_1 (sequenced twice with bad quality)')
 # H6_EXP3_1 was sequenced twice due to bad quality, take mean of the two runs since they're both of lower quality
+H6_EXP3_1_samples = ['/home/shared_data_immuno/Run_Data/170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1_S29',\
+                '/home/shared_data_immuno/Run_Data/161125_NB501809_0023_AHLC7CBGXY/tmp_files/H6_EXP3_1_S15']
 total_rct['/home/shared_data_immuno/Run_Data/161125+170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1'] = \
-    total_rct[['/home/shared_data_immuno/Run_Data/170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1_S29',\
-                '/home/shared_data_immuno/Run_Data/161125_NB501809_0023_AHLC7CBGXY/tmp_files/H6_EXP3_1_S15']].sum(axis =1).map(lambda x: int(x/2))
-del total_rct['/home/shared_data_immuno/Run_Data/170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1_S29']
-del total_rct['/home/shared_data_immuno/Run_Data/161125_NB501809_0023_AHLC7CBGXY/tmp_files/H6_EXP3_1_S15']
-
+    total_rct[H6_EXP3_1_samples].sum(axis =1).map(lambda x: int(x/2))
+total_rct = total_rct.drop(H6_EXP3_1_samples, axis = 1)
 
 if pipeline == '-R':
     
