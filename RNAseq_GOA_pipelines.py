@@ -63,14 +63,13 @@ total_rct = total_rct.drop(H6_EXP3_1_samples, axis = 1)
 if pipeline == '-R':
     
     # write data to files in a subdir
-    out = '{}/R_results'.format(maindir)
-    print('Data preprocessing finished.\nWriting output to: {}'.format(out))
+    out = '{}/R_pipeline_nonresp_0'.format(maindir)
+    print('Data preprocessing finished.\Placing output in directory: {}'.format(out))
     if os.path.isdir(out) != True:
         os.mkdir(out)
     total_rct.write_DESeq2_files(out, response_dict, pipeline = pipeline)
     
-    # perform R analysis)
-    
+    # perform R analysis
     os.chdir(out)
     bashcommand = 'Rscript {}/deseq2_R_analysis.R'.format(maindir)
     process = subprocess.run(bashcommand.split())
@@ -87,14 +86,15 @@ if pipeline == '-ML':
             volunteer_map.setdefault(volunteer_id, []).append(columnname)
             
     # make directory to place all output in
-    out = '{}/ML_approach_samples'.format(maindir)
+    out = '{}/ML_pipeline'.format(maindir)
+    print('Data preprocessing finished.\Placing output in directory: {}'.format(out))
     if os.path.isdir(out) != True:
         os.mkdir(out)
     os.chdir(out)
     
     # write away each volunteer's data to a separate subdir
     for volunteer_id, samples in volunteer_map.items():
-        subout = '{}/ML_approach_samples/{}'.format(maindir, volunteer_id)
+        subout = '{}/{}'.format(out, volunteer_id)
         if os.path.isdir(subout) != True:
             os.mkdir(subout)
         vol_rct = readcountclass.ReadCountTable(total_rct[[total_rct.gene_column_name]+samples])
@@ -103,8 +103,7 @@ if pipeline == '-ML':
         # perform R analysis on this part of the data
         os.chdir(subout)
         bashcommand = 'Rscript {}/deseq2_ML_analysis.R'.format(maindir)
-        process = subprocess.run(bashcommand.split())
-        #os.remove('Rplot.pdf')
+        process = subprocess.run(bashcommand.split())        
         os.chdir(out)
         
     
