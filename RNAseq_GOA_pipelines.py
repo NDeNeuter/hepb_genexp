@@ -47,10 +47,6 @@ response_dict = readcountclass.make_responders_dict()
 for sample in total_rct.columns:
     if sample.split('/')[-1].split('_')[0] not in response_dict.keys() and sample != total_rct.gene_column_name:
         del total_rct[sample]
-                
-print('Removing H1_EXP0_1 from data (outlier on PCA)')
-# remove outlier sample 
-total_rct.remove_sample('H1_EXP0_1')
 
 print('Combining data on H6_EXP3_1 (sequenced twice with bad quality)')
 # H6_EXP3_1 was sequenced twice due to bad quality, take mean of the two runs since they're both of lower quality
@@ -58,7 +54,7 @@ H6_EXP3_1_samples = ['/home/shared_data_immuno/Run_Data/170111_NB501809_0047_AH2
                 '/home/shared_data_immuno/Run_Data/161125_NB501809_0023_AHLC7CBGXY/tmp_files/H6_EXP3_1_S15']
 total_rct['/home/shared_data_immuno/Run_Data/161125+170111_NB501809_0047_AH2HH2BGX2/tmp_files/H6_EXP3_1'] = \
     total_rct[H6_EXP3_1_samples].sum(axis =1).map(lambda x: int(x/2))
-total_rct = total_rct.drop(H6_EXP3_1_samples, axis = 1)
+total_rct = readcountclass.ReadCountTable(total_rct.drop(H6_EXP3_1_samples, axis = 1))
 
 if pipeline == '-R':
     
