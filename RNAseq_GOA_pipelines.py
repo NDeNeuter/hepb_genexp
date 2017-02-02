@@ -56,7 +56,8 @@ total_rct['/home/shared_data_immuno/Run_Data/161125+170111_NB501809_0047_AH2HH2B
     total_rct[H6_EXP3_1_samples].sum(axis =1).map(lambda x: int(x/2))
 total_rct = readcountclass.ReadCountTable(total_rct.drop(H6_EXP3_1_samples, axis = 1))
 
-if pipeline == '-R':
+
+if pipeline == '-R' or pipeline == '-R0':
     
     # write data to files in a subdir
     out = '{}/R_pipeline_nonresp_0'.format(maindir)
@@ -69,7 +70,6 @@ if pipeline == '-R':
     os.chdir(out)
     bashcommand = 'Rscript {}/deseq2_R_analysis.R'.format(maindir)
     process = subprocess.run(bashcommand.split())
-    os.remove('Rplots.pdf')
     
     
 if pipeline == '-ML':
