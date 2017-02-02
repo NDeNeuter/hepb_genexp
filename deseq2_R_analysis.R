@@ -2,6 +2,7 @@
 library(BiocParallel)
 library(DESeq2)
 library("pheatmap")
+library(ggplot2)
 
 register(SnowParam(7))
 
@@ -46,10 +47,10 @@ dev.off()
 # fit model with DESeq
 dds <- DESeq(dds, test="LRT", reduced = ~ Day + Run, parallel = TRUE)
 
-for (x in list(c(0, 3), c(0, 7), c(3, 7))){
+for (x in list(c("Day", 0, 3), c("Day", 0, 7), c("Day", 3, 7), c("Resp", "Non-res", "Resp"))){
   
   # get results for change between days
-  res <- results(dds, contrast = c("Day", x[1], x[2]))
+  res <- results(dds, contrast = c(x[1], x[2], x[3]))
   
   # sort genes according to their significance and show most significant
   res <- res[order(res$padj),]
