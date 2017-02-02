@@ -142,7 +142,7 @@ def concat_read_count_tables(listoftables):
     # set genename as a column instead of index
     total_rct[total_rct.gene_column_name] = total_rct.index
 
-    return total_rct
+    return ReadCountTable(total_rct)
 
 
 def process_samplename(columnname, response_dict, pipeline = 'ML'):
@@ -154,7 +154,7 @@ def process_samplename(columnname, response_dict, pipeline = 'ML'):
     ind = columnname.split('/')[-1].split('_')[0]
     resp = response_dict[ind]
     day = columnname.split('/')[-1].split('_')[1].replace('EXP', '')
-    if pipeline == '-R' and resp == 'Non-resp':
+    if pipeline == '-R0' and resp == 'Non-resp':
         day = 0
     rep = columnname.split('/')[-1].split('_')[2]
     run = columnname.split('/')[-3].split('_')[0]
