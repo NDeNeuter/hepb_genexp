@@ -60,7 +60,11 @@ total_rct = readcountclass.ReadCountTable(total_rct.drop(H6_EXP3_1_samples, axis
 if pipeline == '-R' or pipeline == '-R0':
     
     # write data to files in a subdir
-    out = '{}/R_pipeline_nonresp_0'.format(maindir)
+    if pipeline == '-R':
+        out = '{}/R_pipeline_nonresp_day'.format(maindir)
+    elif pipeline == '-R0':
+        out = '{}/R_pipeline_nonresp_0'.format(maindir)
+        
     print('Data preprocessing finished.\Placing output in directory: {}'.format(out))
     if os.path.isdir(out) != True:
         os.mkdir(out)
@@ -68,6 +72,8 @@ if pipeline == '-R' or pipeline == '-R0':
     
     # perform R analysis
     os.chdir(out)
+    
+    ## Need to pass arguments to R scripts to use different model based on R pipeline ##
     bashcommand = 'Rscript {}/deseq2_R_analysis.R'.format(maindir)
     process = subprocess.run(bashcommand.split())
     
