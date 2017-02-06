@@ -150,16 +150,18 @@ def process_samplename(columnname, response_dict, pipeline = 'ML'):
     ''' Processes a sample's name into the different factors associated with the sample.
     To be used during the writing of coldata (ie: factor table) with the
     write_DESeq2_files method of the ReadCountTable class. '''
-     
+
     ind = columnname.split('/')[-1].split('_')[0]
     resp = response_dict[ind]
-    day = columnname.split('/')[-1].split('_')[1].replace('EXP', '')
-    if pipeline == '-R0' and resp == 'Non-resp':
-        day = 0
-    rep = columnname.split('/')[-1].split('_')[2]
+    repeat = columnname.split('/')[-1].split('_')[2]
     run = columnname.split('/')[-3].split('_')[0]
     
-    return ind, day, rep, run, resp
+    if pipeline == '-R0' and resp == 'Non-resp':
+        day = 0
+    else:
+        day = columnname.split('/')[-1].split('_')[1].replace('EXP', '')
+        
+    return ind, day, repat, run, resp
 
 
 def make_responders_dict(datafile = "/Users/nicolasdeneuter/Dropbox/GOA/HepB run/Hep B run incl test _ Samples overview.xlsx"):
