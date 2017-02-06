@@ -16,7 +16,7 @@ if pipeline == '-R':
 elif pipeline == '-ML':
     print('Running ML based pipeline')
 else:
-    raise ValueError('Expects either -R or -ML as argument to determine which pipeline to run.')
+    raise ValueError('Expects either -R, -R0 or -ML as argument to determine which pipeline to run.')
 
 # read data from working directory
 maindir = os.getcwd()
