@@ -11,7 +11,7 @@ from glob import glob
 pipeline = sys.argv[1]
     
 # determine pipeline to be used based on argument
-if pipeline == '-R':
+if pipeline == '-R' or pipeline == '-R0':
     print('Running R based pipeline')
 elif pipeline == '-ML':
     print('Running ML based pipeline')

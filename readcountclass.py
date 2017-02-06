@@ -161,7 +161,7 @@ def process_samplename(columnname, response_dict, pipeline = 'ML'):
     else:
         day = columnname.split('/')[-1].split('_')[1].replace('EXP', '')
         
-    return ind, day, repat, run, resp
+    return ind, day, repeat, run, resp
 
 
 def make_responders_dict(datafile = "/Users/nicolasdeneuter/Dropbox/GOA/HepB run/Hep B run incl test _ Samples overview.xlsx"):
