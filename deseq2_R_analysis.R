@@ -47,18 +47,18 @@ dev.off()
 # fit model with DESeq
 dds <- DESeq(dds, test="LRT", reduced = ~ Day + Run, parallel = TRUE)
 
-for (x in list(c("Day", 0, 3), c("Day", 0, 7), c("Day", 3, 7), c("Resp", "Non-res", "Resp"))){
+for (x in list(c("Day", 0, 3), c("Day", 0, 7), c("Day", 3, 7), c("Resp", "Non-resp", "Resp"))){
   
   # get results for change between days
   res <- results(dds, contrast = c(x[1], x[2], x[3]))
   
   # sort genes according to their significance and show most significant
   res <- res[order(res$padj),]
-  write.csv(as.data.frame(res), file = paste(getwd(),'/results_',x[1],'_',x[2],'.txt', sep = ''))
+  write.csv(as.data.frame(res), file = paste(getwd(),'/results_',x[2],'_',x[3],'.txt', sep = ''))
   head(res)
   
   # plot MA plot
-  pdf(file = paste(getwd(),'/MAplot_',x[1],'_',x[2],'.pdf', sep = ''))
+  pdf(file = paste(getwd(),'/MAplot_',x[2],'_',x[3],'.pdf', sep = ''))
   plotMA(res, alpha=0.05, ylim=c(-10,10))
   dev.off()
   
@@ -66,7 +66,7 @@ for (x in list(c("Day", 0, 3), c("Day", 0, 7), c("Day", 3, 7), c("Resp", "Non-re
   volcanoData <- cbind(res$log2FoldChange, -log10(res$padj))
   volcanoData <- na.omit(volcanoData)
   colnames(volcanoData) <- c("10logFC", "negLogPval")
-  pdf(file = paste(getwd(),'/volcanoplot_',x[1],'_',x[2],'.pdf', sep = ''))
+  pdf(file = paste(getwd(),'/volcanoplot_',x[2],'_',x[3],'.pdf', sep = ''))
   plot(volcanoData)
   dev.off()
   
