@@ -7,11 +7,11 @@ library(ggplot2)
 register(SnowParam(7))
 
 # reading in count data
-datafilepath <- "read_count_table.txt"
+datafilepath <- "/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/results_threshold_10/R_pipeline_nonresp_0/read_count_table.txt"
 data <- read.table(datafilepath, header = TRUE, sep = "\t", row.names=1)
 
 # reading in colData
-coldatafilepath <- "col_data.txt"
+coldatafilepath <- "/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/results_threshold_10/R_pipeline_nonresp_0/col_data.txt"
 colData <- read.table(coldatafilepath, header = TRUE, sep = "\t")
 colData$Ind <- as.factor(colData$Ind)
 colData$Day <- as.factor(colData$Day)
@@ -33,7 +33,7 @@ rld <- varianceStabilizingTransformation(dds, blind = TRUE)
 par( mfrow = c( 1, 2 ) )
 dds <- estimateSizeFactors(dds)
 pdf(file = paste(getwd(),'/pcaplot.pdf', sep = ''))
-plotPCA(rld, intgroup = c("Day"))
+plotPCA(rld, intgroup = c("Ind"))
 dev.off()
 
 # plot heatmap

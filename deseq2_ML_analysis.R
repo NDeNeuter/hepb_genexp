@@ -14,6 +14,7 @@ colData$Day <- as.factor(colData$Day)
 colData$Repeat <- as.factor(colData$Repeat)
 colData$Resp <- as.factor(colData$Resp)
 colData$Run <- as.factor(colData$Run)
+colData$Run <- droplevels(colData$Run)
 
 # number of patients included in the data
 num_pats <- length(unique(colData$Ind))

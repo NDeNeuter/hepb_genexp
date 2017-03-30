@@ -12,7 +12,7 @@ from sklearn.decomposition import PCA
 #main_data_dir = sys.argv[1]
 main_data_dir = "/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/readcounts/ML_pipeline"
 
-resp_dict = make_responders_dict()
+resp_dict = make_responders_dict(threshold = 50)
 
 subdirmap = {}
 
@@ -29,14 +29,14 @@ for x in os.walk(main_data_dir):
         volunteer = data_file.split('/')[-2]
         contrast = data_file.split('/')[-1].replace('.txt','').replace('results_','')
         resp = resp_dict[volunteer]
-        # skip day 3 vs 7 contrast because it's the difference of the other contrasts
-        if contrast == '3_7':
-            continue
+        # # skip day 3 vs 7 contrast because it's the difference of the other contrasts
+        # if contrast == '3_7':
+        #     continue
         # read in and format data
         diff_gene_table = pd.read_csv(data_file).set_index('Unnamed: 0')
-        # only use those gene that are significantly differentially expressed
-        sig_diff_gene_table = diff_gene_table[diff_gene_table['padj'] <= 0.05]
-        gene_folds = sig_diff_gene_table.transpose().loc[['log2FoldChange']]
+        # # only use those genes that are significantly differentially expressed
+        # diff_gene_table = diff_gene_table[diff_gene_table['padj'] <= 0.05]
+        gene_folds = diff_gene_table.transpose().loc[['log2FoldChange']]
         gene_folds = gene_folds.rename(index={'log2FoldChange': '{}'.format(volunteer)}, 
                                        columns={name: '{}_{}'.format(name, contrast) for name in gene_folds.columns})
         gene_folds.columns.name = 'volunteer_resp'
@@ -57,9 +57,6 @@ for i in range(1, len(temp_fold_frames)):
     
 # replace missing values with 0
 total_gene_fold = gene_fold.fillna(0)
-
-# replace missing values with 0
-total_gene_fold = total_gene_fold.fillna(0)
 
 X = total_gene_fold[[x for x in total_gene_fold.columns if x != 'response']]
 y = total_gene_fold['response']

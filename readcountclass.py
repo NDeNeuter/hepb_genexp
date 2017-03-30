@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import math
 import natsort
 import subprocess
 import pandas as pd
+import seaborn as sns
 from numpy import mean
 
 class ReadCountTable(pd.DataFrame):
@@ -60,7 +62,7 @@ class ReadCountTable(pd.DataFrame):
                 del self[col]
         
         
-    def write_DESeq2_files(self, directory, response_dict, rct_file_name = 'read_count_table.txt', coldata_file_name = 'col_data.txt', pipeline = 'ML'):
+    def write_DESeq2_files(self, directory, response_dict, rct_file_name = 'read_count_table.txt', coldata_file_name = 'col_data.txt', pipeline = 'ML', ):
         
         ''' Writes out necessary files to perform a DESeq2 analysis on the read count table.
         Two files are generated:
@@ -164,10 +166,10 @@ def process_samplename(columnname, response_dict, pipeline = 'ML'):
     return ind, day, repeat, run, resp
 
 
-def make_responders_dict(datafile = "/Users/nicolasdeneuter/Dropbox/GOA/HepB run/Hep B run incl test _ Samples overview.xlsx"):
+def make_responders_dict(datafile="/Users/nicolasdeneuter/Dropbox/GOA/HepB run/Hep B run incl test _ Samples overview.xlsx", threshold=10):
     
     ''' Process data on volunteers to determine if they're responders or not.
-    Return a dict with volunteers as keys and their response as key. '''
+    Return a dict with volunteers as keys and their response as value. '''
     
     # read in data
     all_data = pd.read_excel(datafile, skiprows = [2, 3, 4, 5], header = [0, 1], sheetname = 'ELISA', index_col = 0)
@@ -176,14 +178,32 @@ def make_responders_dict(datafile = "/Users/nicolasdeneuter/Dropbox/GOA/HepB run
     # drop patients with missing values
     elisa_data = elisa_data.dropna()
     # change everything to numbers (< 2 => 0 and > 1000 => 1000)
-    elisa_data = elisa_data.applymap(lambda x: x if x != '< 2' else 0)
-    elisa_data = elisa_data.applymap(lambda x: x if x != '>1000' else 1000)
+    elisa_data_num = elisa_data.applymap(lambda x: x if x != '< 2' else 0)
+    elisa_data_num = elisa_data_num.applymap(lambda x: x if x != '>1000' else 1000)
     # set each patient to responder (True) or non-responder (False) and turn series to dict after calculating mean response
-    elisa_data = dict(elisa_data.apply(mean, axis = 1).map(lambda x: 'Non-resp' if x <= 10 else 'Resp'))
+    if threshold != None:
+        elisa_data_resp = dict(elisa_data_num.apply(mean, axis = 1).map(lambda x: 'Non-resp' if x <= threshold else 'Resp'))
+    # if no threshold given, return actual values
+    else:
+        elisa_data_resp = dict(elisa_data_num.apply(mean, axis = 1))
     
-    return elisa_data
+    return elisa_data_resp
 
+
+def make_metadata(datafile='/Users/nicolasdeneuter/Bestanden/PhD/Projects/GOA/RNAseq/PIMS HBV anon.xlsx'):
+    
+    data = pd.read_excel(datafile, sheetname='Gegevens deelnemers', index_col=0)
+    return data[['Geslacht', 'Leeftijd start studie']].loc[['H{}'.format(i) for i in range(1,43)],:]
 
 if __name__ == '__main__':
     
-    print(make_responders_dict())
+    metadata = make_metadata()
+    response_dict = make_responders_dict(threshold=None)
+    response_dict = {key: math.log(value, 10) if value != 0 else 0 for key, value in response_dict.items()}
+    metadata = metadata.loc[response_dict.keys(),:]
+    metadata = pd.concat([metadata, pd.DataFrame.from_dict(response_dict, orient='index').rename(columns={0:'Response'})], axis=1)
+    
+    metadata['Geslacht'] = metadata['Geslacht'].apply(lambda x: 1 if x == 'V' else 0)
+    metadata[['Leeftijd start studie', 'Response']] = metadata[['Leeftijd start studie', 'Response']]/metadata[['Leeftijd start studie', 'Response']].max()
+    sns.clustermap(metadata)
+    sns.plt.show()

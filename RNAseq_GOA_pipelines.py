@@ -42,7 +42,7 @@ print('Combining read count tables together')
 total_rct = readcountclass.concat_read_count_tables(rct_list)
 
 print('Removing samples with unknown responder status')
-response_dict = readcountclass.make_responders_dict()
+response_dict = readcountclass.make_responders_dict(threshold = 100)
 # remove samples for which responder status is unknown
 for sample in total_rct.columns:
     if sample.split('/')[-1].split('_')[0] not in response_dict.keys() and sample != total_rct.gene_column_name:
@@ -68,7 +68,7 @@ if pipeline == '-R' or pipeline == '-R0':
     print('Data preprocessing finished.\Placing output in directory: {}'.format(out))
     if os.path.isdir(out) != True:
         os.mkdir(out)
-    total_rct.write_DESeq2_files(out, response_dict, pipeline = pipeline)
+    total_rct.write_DESeq2_files(out, response_dict, pipeline=pipeline)
     
     # perform R analysis
     os.chdir(out)
