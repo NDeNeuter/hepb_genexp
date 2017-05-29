@@ -36,7 +36,9 @@ class ReadCountTable(pd.DataFrame):
     
         ''' Combines read count data from data columns for the same sample but from different lanes together.
         This method is an extension of the combine_counts method and assumes lanes are encoded
-        in samples names following a certaing format. '''
+        in samples names following a fixed format (=fastq file name):
+        volunteer_day_repeat_??_lane_read_3numbers
+        '''
         
         # find columnnames that contain data for same patient & time point but have been sequenced on different lanes
         lanegroups = {}
@@ -202,6 +204,8 @@ if __name__ == '__main__':
     response_dict = {key: math.log(value, 10) if value != 0 else 0 for key, value in response_dict.items()}
     metadata = metadata.loc[response_dict.keys(),:]
     metadata = pd.concat([metadata, pd.DataFrame.from_dict(response_dict, orient='index').rename(columns={0:'Response'})], axis=1)
+    
+    metadata.to_csv('metadata.tsv')
     
     metadata['Geslacht'] = metadata['Geslacht'].apply(lambda x: 1 if x == 'V' else 0)
     metadata[['Leeftijd start studie', 'Response']] = metadata[['Leeftijd start studie', 'Response']]/metadata[['Leeftijd start studie', 'Response']].max()
