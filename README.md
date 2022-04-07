@@ -1,4 +1,6 @@
-This repository contains the data linked to the publication entitled 'Transcriptome profiling in blood before and after hepatitis B vaccination shows significant differences in gene expression between responders and non-responders'.
+This repository contains the data and scripts linked to the publication entitled 'Transcriptome profiling in blood before and after hepatitis B vaccination shows significant differences in gene expression between responders and non-responders'.
+
+# Overview
 
 The processed data used in the study can be found in the 'data' directory.
 
